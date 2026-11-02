@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum SkillCategory {
+  CORE
+  ADDITIONAL
+  FAMILIAR
+}
+
+enum ExperienceType {
+  PROFESSIONAL
+  PERSONAL_PROJECT
+  FAMILIARITY
+}
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ResumeProfileType {
+  FULL_STACK
+  BACKEND
+  FRONTEND
+}
+
+enum WorkArrangement {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum CompanyType {
+  STARTUP
+  PRODUCT
+  SAAS
+  IT_SERVICE
+  FINTECH
+  ECOMMERCE
+  MNC
+  OTHER
+}
+
+enum ApplicationStatus {
+  DISCOVERED
+  SAVED
+  APPROVED_TO_APPLY
+  APPLIED
+  INTERVIEWING
+  OFFERED
+  REJECTED
+}
+
+enum RecommendationVerdict {
+  STRONGLY_RECOMMENDED
+  RECOMMENDED
+  CONSIDER_WITH_RESERVATIONS
+  NOT_RECOMMENDED
+}
+
+// -------------------------------------------------------------
+// CANDIDATE PROFILE & DETAILS
+// -------------------------------------------------------------
+
+model CandidateProfile {
+  id                      String             @id @default(cuid())
+  name                    String
+  email                   String             @default("candidate@example.com")
+  phone                   String             @default("+91-XXXXXXXXXX")
+  location                String             // Target Location
+  currentPosition         String             // Associate Software Developer
+  currentCompany          String             // Tech Enterprise Solutions
+  employmentStartDate     DateTime           // Start Date
+  manualExperienceYears   Float?             // Optional override if specified
+  educationDegree         String             // B.E. Computer Science and Engineering
+  educationInstitution    String             // Technological University
+  educationGraduationYear Int                @default(2025)
+  educationCgpa           Float              @default(9.00)
+  professionalSummary     String
+  targetRoles             String             // JSON string array of job titles
+  targetLocations         String             // JSON string array of location preferences
+  targetExpMin            Float              @default(1.0)
+  targetExpMax            Float              @default(2.0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  skills                  CandidateSkill[]
+  workExperiences         WorkExperience[]
+  educations              Education[]
+  projects                Project[]
+  resumeProfiles          ResumeProfile[]
+  jobMatches              JobMatchAnalysis[]
+  aiRecommendations       AIRecommendation[]
+  applications            JobApplication[]
+}
+
+model CandidateSkill {
+  id                  String           @id @default(cuid())
+  candidateId         String
+  name                String
+  category            SkillCategory
+  experienceType      ExperienceType
+  verifiedProficiency ProficiencyLevel
+  yearsOfExperience   Float            @default(1.0)
+  notes               String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  candidate           CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, name])
+  @@index([category])
+  @@index([experienceType])
+}
+
+model WorkExperience {
+  id              String           @id @default(cuid())
+  candidateId     String
+  company         String
+  position        String
+  startDate       DateTime
+  endDate         DateTime?
+  isCurrent       Boolean          @default(false)
+  location        String           @default("Ahmedabad, India")
+  description     String
+  responsibilities String          // JSON string array of achievements/responsibilities
+  technologies    String           // JSON string array of technologies used
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  candidate       CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model Education {
+  id              String           @id @default(cuid())
+  candidateId     String
+  institution     String
+  degree          String
+  fieldOfStudy    String
+  graduationYear  Int
+  cgpa            Float
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  candidate       CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model Project {
+  id           String           @id @default(cuid())
+  candidateId  String
+  title        String
+  technologies String           // JSON string array
+  capabilities String           // JSON string array of evidence points
+  description  String
+  projectUrl   String?
+  repoUrl      String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  candidate    CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model ResumeProfile {
+  id               String            @id @default(cuid())
+  candidateId      String
+  profileType      ResumeProfileType
+  title            String            // e.g. "Full Stack Developer Profile"
+  targetSummary    String
+  emphasizedSkills String            // JSON string array
+  projectIds       String            // JSON string array of primary projects to highlight
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  candidate        CandidateProfile  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+// -------------------------------------------------------------
+// JOBS, MATCHING & AI INTELLIGENCE
+// -------------------------------------------------------------
+
+model JobListing {
+  id                   String            @id @default(cuid())
+  title                String
+  company              String
+  location             String
+  workArrangement      WorkArrangement   @default(ONSITE)
+  companyType          CompanyType       @default(OTHER)
+  minSalary            Float?
+  maxSalary            Float?
+  salaryCurrency       String            @default("INR")
+  salaryIsEstimated    Boolean           @default(false)
+  salarySource         String?
+  description          String
+  originalUrl          String            @unique
+  source               String            // "LinkedIn", "Naukri", "Company Career Site", etc.
+  experienceMinYears   Float             @default(1.0)
+  experienceMaxYears   Float?
+  experienceIsMandatory Boolean          @default(true)
+  mandatorySkills      String            // JSON string array
+  preferredSkills      String            // JSON string array
+  responsibilities     String            // JSON string array
+  postedAt             DateTime          @default(now())
+  isExpired            Boolean           @default(false)
+  isVerified           Boolean           @default(true)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  matchAnalysis        JobMatchAnalysis?
+  recommendations      AIRecommendation[]
+  applications         JobApplication[]
+
+  @@index([company])
+  @@index([location])
+  @@index([workArrangement])
+  @@index([postedAt])
+  @@index([isExpired])
+}
+
+model JobMatchAnalysis {
+  id                     String           @id @default(cuid())
+  jobId                  String           @unique
+  candidateId            String
+  overallScore           Float            // 0 - 100
+  technicalScore         Float            // Weight: 35%
+  experienceScore        Float            // Weight: 20%
+  responsibilityScore    Float            // Weight: 20%
+  roleScore              Float            // Weight: 15%
+  locationScore          Float            // Weight: 10%
+  matchingSkills         String           // JSON string array
+  missingMandatorySkills String           // JSON string array
+  missingPreferredSkills String           // JSON string array
+  experienceGap          Float            // Years gap between requirement & candidate experience
+  roleSuitability        String           // "HIGH", "MEDIUM", "LOW"
+  locationCompatibility  String           // "FULL_MATCH", "RELOCATION_REQUIRED", "REMOTE_ONLY", "INCOMPATIBLE"
+  reasonsToApply         String           // JSON string array
+  reasonsNotToApply      String           // JSON string array
+  scoringExplanation     String
+  calculatedAt           DateTime         @default(now())
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  job                    JobListing       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate              CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([overallScore])
+}
+
+model AIRecommendation {
+  id                    String                @id @default(cuid())
+  jobId                 String
+  candidateId           String
+  verdict               RecommendationVerdict @default(RECOMMENDED)
+  suitabilitySummary    String
+  requirementsSatisfied String                // JSON string array
+  requirementsMissing   String                // JSON string array
+  interviewPrepTopics   String                // JSON string array
+  expectedQuestions     String                // JSON string array
+  technicalDeepDive     String?               // Node.js, NestJS, React, SQL, system design prep
+  salaryAssessment      String?
+  modelUsed             String                @default("heuristic-engine")
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  job                   JobListing            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate             CandidateProfile      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([candidateId])
+}
+
+model JobApplication {
+  id                   String            @id @default(cuid())
+  jobId                String            @unique
+  candidateId          String
+  status               ApplicationStatus @default(DISCOVERED)
+  approvedByCandidate  Boolean           @default(false)
+  resumeProfileUsedId  String?
+  tailoredResumeText   String?
+  notes                String?
+  appliedAt            DateTime?
+  nextFollowUpDate     DateTime?
+  interviewDate        DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  job                  JobListing        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate            CandidateProfile  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([candidateId])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String   // JSON payload
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
